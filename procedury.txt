@@ -94,3 +94,104 @@ Wyswietla klientow i pracowników (wszystkie kolumny, z dopiskiem pracownik'/'kl
 Parametrem wywolania jest miasto Wroclaw
 Wyswietla imiona i nazwiska klentow, numery wypozyczen oraz kooszt wypozyczen.
 Parametrem wywolania jest data poczatkowa i data koncowa oraz id klienta
+
+
+
+DROP PROCEDURE IF EXISTS kl;
+
+DELIMITER $$
+    CREATE PROCEDURE kl()
+        BEGIN
+            SELECT * FROM klienci;
+        END$$
+DELIMITER ;
+
+CALL kl();
+
+DROP PROCEDURE IF EXISTS kl_m;
+
+DELIMITER $$
+    CREATE PROCEDURE kl_m(
+    	_miasto VARCHAR(45)
+    )
+        BEGIN
+            SELECT * FROM klienci
+            WHERE klienci.miasto_klienta = _miasto;
+        END$$
+DELIMITER ;
+
+SET @miasto = 'Wrocław';
+CALL kl_m(@miasto);
+
+Procedura 1:
+
+Wyświetla podsumowanie wypożyczeń 
+(id wypożyczenia, model i marka pojadu, data wypożyczenia i data zwrotu, imię i nazwisko klienta, wartość wypożyczenia)
+
+Paramterem wywołania jest data początkowa i końcowa (data wypożyczenia - nie data zwrotu),
+np od 1 do 31 grudnia 2022 r.
+
+DROP PROCEDURE IF EXISTS RaportWypozyczen;
+
+DELIMITER $$
+CREATE PROCEDURE RaportWypozyczen (
+    IN v_datapoczatkowa DATE,
+	IN v_datakoncowa DATE)
+BEGIN
+    SELECT 
+        klienci.imie_klienta,
+        klienci.nazwisko_klienta,
+        wypozyczenia.id_wypozyczenia,
+        wypozyczenia.data_wyp,
+        wypozyczenia.data_zwr,
+        samochody.marka,
+        samochody.model,
+        dane_wypozyczen.ilosc_dob,
+        dane_wypozyczen.cena_doba*dane_wypozyczen.ilosc_dob AS 'kwota'
+    FROM klienci
+        JOIN wypozyczenia ON wypozyczenia.id_klienta = klienci.id_klienta
+        JOIN dane_wypozyczen ON dane_wypozyczen.id_wypozyczenia = wypozyczenia.id_wypozyczenia
+        JOIN samochody ON samochody.id_samochodu = dane_wypozyczen.id_samochodu
+    WHERE wypozyczenia.data_wyp BETWEEN v_datapoczatkowa AND v_datakoncowa
+    GROUP BY samochody.id_samochodu  
+    ORDER BY wypozyczenia.id_wypozyczenia ASC;
+END$$ 
+DELIMITER ;
+SET @v_datapoczatkowa=('2022-12-25');
+SET @v_datakoncowa=('2022-12-31');
+CALL RaportWypozyczen(@v_datapoczatkowa,@v_datakoncowa)
+
+Procedura 2:
+
+Wyświetla dostępne auta w danym dniu (model, marka, nr rejestracyjny, cena za dobę)
+
+Paramterem wywołania jest dzień (np. 31.12.2022 r.)
+
+DROP PROCEDURE IF EXISTS DostepnoscSamochodu;
+
+DELIMITER $$
+CREATE PROCEDURE DostepnoscSamochodu (
+    IN v_datadostepnosci DATE)
+BEGIN
+    SELECT 
+        samochody.id_samochodu,
+        samochody.marka,
+        samochody.model,
+        samochody.nr_rejestracyjny,
+        klasy_samochodow.nazwa_klasy,
+        samochody.cena_katalogowa
+    FROM samochody
+        
+   WHERE id_samochodu NOT IN
+   			(SELECT samochody.id_samochodu
+             FROM samochody
+                  JOIN dane_wypozyczen ON dane_wypozyczen.id_samochodu = samochody.id_samochodu
+                  JOIN wypozyczenia ON wypozyczenia.id_wypozyczenia = dane_wypozyczen.id_wypozyczenia
+             WHERE wypozyczenia.data_wyp <= v_datadostepnosci 
+             AND wypozyczenia.data_zwr >= v_datadostepnosci);
+END$$
+DELIMITER ;
+
+SET @datadostepnosci=('2022-12-31');
+
+CALL DostepnoscSamochodu(@datadostepnosci);
