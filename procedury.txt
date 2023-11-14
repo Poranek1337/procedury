@@ -1,0 +1,96 @@
+DELIMITER $$
+CREATE PROCEDURE PobierzWypozyczenia(IN data_poczatkowa DATE, IN data_koncowa DATE, IN id_klienta INT)
+BEGIN
+ SELECT imie_klienta, nazwisko_klienta, id_wypozyczenia, cena_doba * ilosc_dob AS 'Koszt wypożyczenia' FROM klienci 
+ JOIN wypozyczenia ON klienci.id = wypozyczenia.id_klienta 
+ JOIN dane_wypozyczen ON wypozyczenia.id = dane_wypozyczen.id_wypozyczenia 
+ WHERE klienci.id = id_klienta AND wypozyczenia.data_wyp BETWEEN data_poczatkowa AND data_koncowa;
+END$$
+DELIMITER ;
+
+
+1. Zapisana procedura, która wyświetla listę wszystkich klientów z określonego miasta:
+DELIMITER $$
+CREATE PROCEDURE PobierzKlientowZMiejsca(IN miasto VARCHAR(45))
+BEGIN
+ SELECT * FROM klienci WHERE miasto_klienta = miasto;
+END$$
+DELIMITER ;
+
+2. Zapisana procedura, która aktualizuje cenę wypożyczenia dla określonego typu wypożyczenia:
+DELIMITER $$
+CREATE PROCEDURE AktualizujCeneWypozyczenia(IN typ_wypozyczenia VARCHAR(45), IN nowa_cena DECIMAL(8,2))
+BEGIN
+ UPDATE dane_wypozyczen SET cena_doba = nowa_cena WHERE id_wypozyczenia IN (
+   SELECT id_wypozyczenia FROM wypozyczenia WHERE id_samochodu IN (
+     SELECT id_samochodu FROM samochody WHERE id_klasy IN (
+       SELECT id_klasy FROM klasy_samochodow WHERE nazwa_klasy = typ_wypozyczenia
+     )
+   )
+ );
+END$$
+DELIMITER ;
+
+3. Zapisana procedura, która dodaje nową książkę do bazy danych:
+DELIMITER $$
+CREATE PROCEDURE DodajKsiazke(IN tytul VARCHAR(45), IN autor VARCHAR(45), IN rok_wydania YEAR)
+BEGIN
+ INSERT INTO ksiazki (tytul, autor, rok_wydania) VALUES (tytul, autor, rok_wydania);
+END$$
+DELIMITER ;
+
+
+4. Zapisana procedura, która usuwa wypożyczenie dla określonego klienta:
+DELIMITER $$
+CREATE PROCEDURE UsunWypozyczenie(IN id_klienta INT, IN id_wypozyczenia INT)
+BEGIN
+ DELETE FROM wypozyczenia WHERE id_klienta = id_klienta AND id_wypozyczenia = id_wypozyczenia;
+END$$
+DELIMITER ;
+
+5. Zapisana procedura, która wyświetla listę wszystkich wypożyczeń dla określonego klienta:
+DELIMITER $$
+CREATE PROCEDURE PobierzWypozyczeniaKlienta(IN id_klienta INT)
+BEGIN
+ SELECT * FROM wypozyczenia WHERE id_klienta = id_klienta;
+END$$
+DELIMITER ;
+
+
+CALL PobierzKlientowZMiejsca('Wrocław');
+CALL AktualizujCeneWypozyczenia('Kompakt', 50.00);
+CALL DodajKsiazke('Nowa Książka', 'Jan Kowalski', 2023);
+CALL UsunWypozyczenie(1, 1);
+CALL PobierzWypozyczeniaKlienta(1);
+
+
+DROP PROCEDURE IF EXISTS osoby;
+DELIMITER $$
+CREATE PROCEDURE osoby(
+    _miasto VARCHAR(45)
+)
+BEGIN
+SELECT imie_klienta as imie, nazwisko_klienta as nazwisko , miasto_klienta as miasto, 'klient' as kto
+FROM klienci
+WHERE miasto_klienta = _miasto
+UNION 
+SELECT imie_pracownika, nazwisko_pracownika, miasto_pracownika, 'pracownik' 
+FROM pracownicy
+WHERE miasto_pracownika = _miasto;
+END$$
+
+DELIMITER //
+CREATE PROCEDURE DisplayRentInfo(IN start_date DATE, IN end_date DATE, IN client_id INT)
+BEGIN
+   SELECT klienci.imie_klienta, klienci.nazwisko_klienta, wypozyczenia.id_wypozyczenia, dane_wypozyczen.cena_doba * dane_wypozyczen.ilosc_dob AS cost
+   FROM klienci
+   JOIN wypozyczenia ON klienci.id_klienta = wypozyczenia.id_klienta
+   JOIN dane_wypozyczen ON wypozyczenia.id_wypozyczenia = dane_wypozyczen.id_wypozyczenia
+   WHERE klienci.id_klienta = client_id AND wypozyczenia.data_wyp BETWEEN start_date AND end_date;
+END //
+DELIMITER ;
+
+Wyswietla klientow i pracowników (wszystkie kolumny, z dopiskiem pracownik'/'klient)
+Parametrem wywolania jest miasto Wroclaw
+Wyswietla imiona i nazwiska klentow, numery wypozyczen oraz kooszt wypozyczen.
+Parametrem wywolania jest data poczatkowa i data koncowa oraz id klienta
