@@ -195,3 +195,29 @@ DELIMITER ;
 SET @datadostepnosci=('2022-12-31');
 
 CALL DostepnoscSamochodu(@datadostepnosci);
+
+DELIMITER //
+  CREATE PROCEDURE WyświetlInformacjeOWynajmie(IN start_date DATE, IN end_date DATE, IN client_id INT)
+  BEGIN
+     SELECT klienci.imie_klienta, klienci.nazwisko_klienta, wypozyczenia.id_wypozyczenia, dane_wypozyczen.cena_doba * dane_wypozyczen.ilosc_dob AS koszt
+     FROM klienci
+     JOIN wypozyczenia ON klienci.id_klienta = wypozyczenia.id_klienta
+     JOIN dane_wypozyczen ON wypozyczenia.id_wypozyczenia = dane_wypozyczen.id_wypozyczenia
+     WHERE klienci.id_klienta = client_id AND wypozyczenia.data_wyp BETWEEN start_date AND end_date;
+  END //
+DELIMITER ;
+
+CALL WyświetlInformacjeOWynajmie('2019-01-01', '2023-12-31', 1);
+
+DELIMITER //
+  CREATE PROCEDURE OsobyZMiasta(IN miasto VARCHAR(45))
+  BEGIN
+    SELECT imie_klienta as imie, nazwisko_klienta as nazwisko , miasto_klienta as miasto, 'klient' as kto
+    FROM klienci
+    WHERE miasto_klienta = miasto
+    UNION
+    SELECT imie_pracownika, nazwisko_pracownika, miasto_pracownika, 'pracownik'
+    FROM pracownicy
+    WHERE miasto_pracownika = miasto;
+  END //
+DELIMITER ;
